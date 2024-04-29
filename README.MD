@@ -37,74 +37,74 @@ Single stub direct and indirect syscalling with runtime SSN resolving for window
 ## Example:
 
 ```rust
-    #![allow(non_snake_case)]
-    use ntapi::ntapi_base::CLIENT_ID;
-    use rust_syscalls::syscall;
+#![allow(non_snake_case)]
+use ntapi::ntapi_base::CLIENT_ID;
+use rust_syscalls::syscall;
 
-    use winapi::shared::ntdef::{OBJECT_ATTRIBUTES, HANDLE, NULL, NTSTATUS, PVOID};
-    use winapi::um::winnt::{PROCESS_VM_WRITE, PROCESS_VM_READ, MEMORY_BASIC_INFORMATION};
-    use std::mem::size_of;
-    
-    fn main(){
-        let pid             : u64      = 3268; //Process PID
-        let currentProcess  : HANDLE = -1isize as _;
-        let mem_info_len    : usize = size_of::<MEMORY_BASIC_INFORMATION>() as _;
+use winapi::shared::ntdef::{OBJECT_ATTRIBUTES, HANDLE, NULL, NTSTATUS, PVOID};
+use winapi::um::winnt::{PROCESS_VM_WRITE, PROCESS_VM_READ, MEMORY_BASIC_INFORMATION};
+use std::mem::size_of;
 
-        let mut handle      : HANDLE   = NULL;
-        let mut status      : NTSTATUS;
-    
-        let mem_info: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION {
-            BaseAddress: NULL,
-            AllocationBase: NULL,
-            AllocationProtect: 0,
-            RegionSize: 0,
-            State: 0,
-            Protect: 0,
-            Type: 0,
-        };
+fn main() {
+    let pid             : u64      = 3268; //Process PID
+    let currentProcess  : HANDLE = -1isize as _;
+    let mem_info_len    : usize = size_of::<MEMORY_BASIC_INFORMATION>() as _;
 
-        let oa : OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES {
-            Length: size_of::<OBJECT_ATTRIBUTES>() as _,
-            RootDirectory: NULL,
-            ObjectName: NULL as _,
-            Attributes: 0,
-            SecurityDescriptor: NULL,
-            SecurityQualityOfService: NULL
-        };
+    let mut handle      : HANDLE   = NULL;
+    let mut status      : NTSTATUS;
 
-        let cid : CLIENT_ID = CLIENT_ID {
-            UniqueProcess: pid as _,
-            UniqueThread: 0 as _
-        };
+    let mem_info: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION {
+        BaseAddress: NULL,
+        AllocationBase: NULL,
+        AllocationProtect: 0,
+        RegionSize: 0,
+        State: 0,
+        Protect: 0,
+        Type: 0,
+    };
 
-        unsafe {
-            status = syscall!("NtOpenProcess", &mut handle, PROCESS_VM_WRITE | PROCESS_VM_READ, &oa, &cid);
-        }
-        
-        println!("\n\t[-] NtOpenProcess status: {:#02X}", status);
+    let oa : OBJECT_ATTRIBUTES = OBJECT_ATTRIBUTES {
+        Length: size_of::<OBJECT_ATTRIBUTES>() as _,
+        RootDirectory: NULL,
+        ObjectName: NULL as _,
+        Attributes: 0,
+        SecurityDescriptor: NULL,
+        SecurityQualityOfService: NULL
+    };
 
-        if status != 0 {
-            return;
-        }
+    let cid : CLIENT_ID = CLIENT_ID {
+        UniqueProcess: pid as _,
+        UniqueThread: 0 as _
+    };
 
-        unsafe {
-            status = syscall!("NtQueryVirtualMemory", currentProcess, &pid, 0, &mem_info, mem_info_len, NULL as PVOID);
-        }
-        
-        println!("\n\t[-] NtQueryVirtualMemory status: {:#02X}", status);
-        
-        if status != 0 {
-            return;
-        }
-
-        println!("\n\t[-] Protect value: {:#02X}\n\t", mem_info.Protect);
-
-        unsafe {
-            status = syscall!("NtClose", handle);
-        }
-        
-        println!("\t[-] NtClose       status: {:#02X}", status);
+    unsafe {
+        status = syscall!("NtOpenProcess", &mut handle, PROCESS_VM_WRITE | PROCESS_VM_READ, &oa, &cid);
     }
+    
+    println!("\n\t[-] NtOpenProcess status: {:#02X}", status);
+
+    if status != 0 {
+        return;
+    }
+
+    unsafe {
+        status = syscall!("NtQueryVirtualMemory", currentProcess, &pid, 0, &mem_info, mem_info_len, NULL as PVOID);
+    }
+    
+    println!("\n\t[-] NtQueryVirtualMemory status: {:#02X}", status);
+    
+    if status != 0 {
+        return;
+    }
+
+    println!("\n\t[-] Protect value: {:#02X}\n\t", mem_info.Protect);
+
+    unsafe {
+        status = syscall!("NtClose", handle);
+    }
+    
+    println!("\t[-] NtClose       status: {:#02X}", status);
+}
 ```
 
 
@@ -112,23 +112,23 @@ Single stub direct and indirect syscalling with runtime SSN resolving for window
 
 All the code required to do the SSN and address fetching is included in the file `src\syscall_resolve.rs`.
 
-There is one core function used to retrieve the values called `get_ssn`, with 4 implementations, where the received argument is the result of calling `crate::obf!(\<your function name\>)`, and the return values are the ssn (u16), and, in case of indirect syscalling, the address of the syscall/sysenter instruction that you want to use.
+There is one core function used to retrieve the values called `get_ssn`, with 4 implementations, where the received argument is the result of calling `crate::obf!(\<your function name\>)`, and the return values are the ssn (`u16`), and, in case of indirect syscalling, the address of the syscall/sysenter instruction that you want to use.
 
 * x86_64 direct:
   
-    > fn get_ssn(hash: u32) -> (u16);
+    > `fn get_ssn(hash: u32) -> (u16);`
 
 * x86_64 indirect:
 
-    > fn get_ssn(hash: u32) -> (u16, u64);
+    > `fn get_ssn(hash: u32) -> (u16, u64);`
 
 * x86 direct:
 
-    > fn get_ssn(hash: u32) -> (u16);
+    > `fn get_ssn(hash: u32) -> (u16);`
 
 * x86 indirect:
 
-    > fn get_ssn(hash: u32) -> (u16, u32);
+    > `fn get_ssn(hash: u32) -> (u16, u32);`
 
 Just reimplement this functions with your desired fetching method.
 
